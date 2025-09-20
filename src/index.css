@@ -2,41 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* AI Game Development Studio Design System - Cyberpunk Gaming Theme
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core Gaming Colors */
+    --background: 220 27% 8%;
+    --foreground: 180 100% 85%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    /* Gaming UI Elements */
+    --card: 220 27% 12%;
+    --card-foreground: 180 100% 90%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 220 27% 10%;
+    --popover-foreground: 180 100% 90%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Electric Cyan Primary */
+    --primary: 180 100% 50%;
+    --primary-foreground: 220 27% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Deep Tech Secondary */
+    --secondary: 240 30% 18%;
+    --secondary-foreground: 180 100% 85%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Subtle Elements */
+    --muted: 220 20% 15%;
+    --muted-foreground: 180 30% 65%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Neon Purple Accent */
+    --accent: 280 100% 60%;
+    --accent-foreground: 220 27% 8%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Gaming Alert Colors */
+    --destructive: 0 100% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --success: 120 100% 50%;
+    --success-foreground: 220 27% 8%;
 
-    --radius: 0.5rem;
+    --warning: 45 100% 60%;
+    --warning-foreground: 220 27% 8%;
+
+    /* Interface Elements */
+    --border: 220 20% 20%;
+    --input: 220 27% 15%;
+    --ring: 180 100% 50%;
+
+    /* Gaming Specific Colors */
+    --gaming-glow: 180 100% 50%;
+    --gaming-energy: 280 100% 60%;
+    --gaming-tech: 240 100% 45%;
+    --gaming-danger: 0 100% 60%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(180 100% 50%), hsl(240 100% 45%));
+    --gradient-secondary: linear-gradient(135deg, hsl(280 100% 60%), hsl(320 100% 50%));
+    --gradient-tech: linear-gradient(135deg, hsl(220 27% 15%), hsl(240 30% 18%));
+    --gradient-glow: linear-gradient(135deg, hsl(180 100% 50% / 0.1), hsl(280 100% 60% / 0.1));
+
+    /* Shadows & Effects */
+    --shadow-glow: 0 0 30px hsl(180 100% 50% / 0.3);
+    --shadow-energy: 0 0 20px hsl(280 100% 60% / 0.4);
+    --shadow-tech: 0 4px 20px hsl(220 27% 8% / 0.8);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --radius: 0.75rem;
 
     --sidebar-background: 0 0% 98%;
 
@@ -56,41 +91,71 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* Enhanced dark mode for intense gaming sessions */
+    --background: 215 30% 6%;
+    --foreground: 180 100% 90%;
+    --card: 215 30% 8%;
+    --gaming-glow: 180 100% 60%;
+    --gaming-energy: 280 100% 70%;
+  }
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+  /* Custom Gaming Animations */
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 10px hsl(var(--gaming-glow) / 0.3); }
+    50% { box-shadow: 0 0 25px hsl(var(--gaming-glow) / 0.8); }
+  }
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+  @keyframes energy-flow {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+  @keyframes matrix-rain {
+    0% { transform: translateY(-100%); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(100vh); opacity: 0; }
+  }
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+  /* Gaming Utility Classes */
+  .gaming-glow {
+    box-shadow: var(--shadow-glow);
+    transition: var(--transition-smooth);
+  }
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+  .gaming-glow:hover {
+    box-shadow: 0 0 40px hsl(var(--gaming-glow) / 0.5);
+    transform: translateY(-2px);
+  }
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+  .energy-border {
+    background: var(--gradient-primary);
+    background-size: 200% 200%;
+    animation: energy-flow 3s ease infinite;
+  }
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+  .tech-panel {
+    background: var(--gradient-tech);
+    border: 1px solid hsl(var(--border));
+    backdrop-filter: blur(10px);
+  }
+
+  .holographic {
+    background: linear-gradient(45deg, 
+      hsl(180 100% 50% / 0.1) 0%,
+      hsl(280 100% 60% / 0.1) 25%,
+      hsl(180 100% 50% / 0.1) 50%,
+      hsl(320 100% 50% / 0.1) 75%,
+      hsl(180 100% 50% / 0.1) 100%
+    );
+    background-size: 400% 400%;
+    animation: energy-flow 8s ease infinite;
   }
 }
 
