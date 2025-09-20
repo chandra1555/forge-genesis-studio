@@ -1,358 +1,167 @@
-import { useState, useCallback } from 'react';
-import { GameData, GameMetadata, GenerationOptions } from '@/types/game';
-import { toast } from 'sonner';
+import { useState } from 'react';
+import { GameData, GameMetadata, GameConfig } from '../types/game';
 
-interface UseGameGeneratorReturn {
-  isGenerating: boolean;
-  error: string | null;
-  currentGame: GameData | null;
-  generateGame: (prompt: string, options?: GenerationOptions) => Promise<void>;
-  saveGame: (game: GameData, metadata: Omit<GameMetadata, 'id' | 'createdAt' | 'updatedAt' | 'plays'>) => string;
-  loadGame: (id: string) => GameData | null;
-  getGameHistory: () => GameMetadata[];
-  deleteGame: (id: string) => void;
+// Game templates for different prompt types
+const gameTemplates = {
+  platformer: {
+    mechanics: ['jumping', 'running', 'collecting'],
+    elements: ['platforms', 'enemies', 'coins'],
+    config: {
+      gravity: 0.5,
+      jumpForce: -10,
+      objects: [
+        { type: 'rectangle', x: 100, y: 400, width: 600, height: 20, color: '#8B4513', behavior: 'static' },
+        { type: 'rectangle', x: 200, y: 300, width: 100, height: 20, color: '#8B4513', behavior: 'static' },
+        { type: 'rectangle', x: 400, y: 200, width: 100, height: 20, color: '#8B4513', behavior: 'static' },
+        { type: 'circle', x: 150, y: 350, radius: 15, color: '#FFD700', behavior: 'collectible' }
+      ]
+    }
+  },
+  puzzle: {
+    mechanics: ['matching', 'swapping', 'solving'],
+    elements: ['tiles', 'blocks', 'grid'],
+    config: {
+      gridSize: 8,
+      moves: 20,
+      objects: [
+        { type: 'rectangle', x: 200, y: 150, width: 50, height: 50, color: '#FF0000', behavior: 'puzzle-piece' },
+        { type: 'rectangle', x: 300, y: 150, width: 50, height: 50, color: '#00FF00', behavior: 'puzzle-piece' },
+        { type: 'rectangle', x: 400, y: 150, width: 50, height: 50, color: '#0000FF', behavior: 'puzzle-piece' }
+      ]
+    }
+  },
+  shooter: {
+    mechanics: ['aiming', 'shooting', 'dodging'],
+    elements: ['targets', 'projectiles', 'enemies'],
+    config: {
+      fireRate: 0.3,
+      enemyCount: 10,
+      objects: [
+        { type: 'rectangle', x: 400, y: 500, width: 30, height: 50, color: '#0000FF', behavior: 'player' },
+        { type: 'circle', x: 200, y: 100, radius: 15, color: '#FF0000', behavior: 'enemy' },
+        { type: 'circle', x: 600, y: 150, radius: 15, color: '#FF0000', behavior: 'enemy' }
+      ]
+    }
+  },
+  adventure: {
+    mechanics: ['exploring', 'collecting', 'solving'],
+    elements: ['characters', 'items', 'puzzles'],
+    config: {
+      exploration: true,
+      objects: [
+        { type: 'rectangle', x: 400, y: 300, width: 40, height: 60, color: '#0000FF', behavior: 'player' },
+        { type: 'rectangle', x: 200, y: 200, width: 30, height: 30, color: '#FFD700', behavior: 'item' },
+        { type: 'rectangle', x: 600, y: 400, width: 30, height: 30, color: '#FFD700', behavior: 'item' }
+      ]
+    }
+  }
+};
+
+// Analyze prompt to determine game type
+function analyzePrompt(prompt: string): string {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  if (lowerPrompt.includes('platform') || lowerPrompt.includes('jump')) {
+    return 'platformer';
+  } else if (lowerPrompt.includes('puzzle') || lowerPrompt.includes('match') || lowerPrompt.includes('solve')) {
+    return 'puzzle';
+  } else if (lowerPrompt.includes('shoot') || lowerPrompt.includes('space') || lowerPrompt.includes('target')) {
+    return 'shooter';
+  } else if (lowerPrompt.includes('adventure') || lowerPrompt.includes('explore') || lowerPrompt.includes('quest')) {
+    return 'adventure';
+  }
+  
+  // Default to platformer if no specific type is detected
+  return 'platformer';
 }
 
-const STORAGE_KEY = 'forge-genesis-games';
-const METADATA_KEY = 'forge-genesis-metadata';
+// Extract theme from prompt
+function extractTheme(prompt: string): string {
+  const lowerPrompt = prompt.toLowerCase();
+  
+  if (lowerPrompt.includes('space') || lowerPrompt.includes('alien')) {
+    return 'space';
+  } else if (lowerPrompt.includes('forest') || lowerPrompt.includes('jungle')) {
+    return 'forest';
+  } else if (lowerPrompt.includes('water') || lowerPrompt.includes('ocean')) {
+    return 'underwater';
+  } else if (lowerPrompt.includes('castle') || lowerPrompt.includes('medieval')) {
+    return 'medieval';
+  }
+  
+  return 'default';
+}
 
-export const useGameGenerator = (): UseGameGeneratorReturn => {
+export function useGameGenerator() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [currentGame, setCurrentGame] = useState<GameData | null>(null);
+  const [generatedGame, setGeneratedGame] = useState<{
+    data: GameData;
+    metadata: GameMetadata;
+  } | null>(null);
 
-  const simulateGameGeneration = async (prompt: string, options?: GenerationOptions): Promise<GameData> => {
-    // Simulate AI generation with realistic delay
-    await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 2000));
-    
-    const gameType = options?.gameType || 'platformer';
-    const theme = options?.theme || 'cyberpunk';
-    
-    // Generate a basic game structure based on prompt
-    const gameConfig = {
-      width: 800,
-      height: 600,
-      backgroundColor: theme === 'cyberpunk' ? '#0a0a0f' : '#87CEEB',
-      playerSpeed: 5,
-      jumpPower: 12,
-      gravity: 0.8,
-      enemies: Math.floor(Math.random() * 5) + 3,
-      collectibles: Math.floor(Math.random() * 10) + 5
-    };
-
-    const gameData: GameData = {
-      title: prompt.slice(0, 50),
-      type: gameType,
-      files: {
-        'main.js': generateGameCode(prompt, gameConfig),
-        'config.json': JSON.stringify(gameConfig, null, 2)
-      },
-      config: gameConfig
-    };
-
-    return gameData;
-  };
-
-  const generateGameCode = (prompt: string, config: any): string => {
-    return `
-// Generated game: ${prompt}
-class Game {
-  constructor() {
-    this.canvas = null;
-    this.ctx = null;
-    this.player = { x: 100, y: 400, width: 32, height: 32, vx: 0, vy: 0, onGround: false };
-    this.enemies = [];
-    this.collectibles = [];
-    this.score = 0;
-    this.isRunning = false;
-    this.config = ${JSON.stringify(config)};
-    this.init();
-  }
-
-  init() {
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = this.config.width;
-    this.canvas.height = this.config.height;
-    this.ctx = this.canvas.getContext('2d');
-    
-    // Generate enemies
-    for (let i = 0; i < this.config.enemies; i++) {
-      this.enemies.push({
-        x: Math.random() * (this.config.width - 50) + 200,
-        y: Math.random() * (this.config.height - 100) + 50,
-        width: 24,
-        height: 24,
-        vx: (Math.random() - 0.5) * 2
-      });
-    }
-    
-    // Generate collectibles
-    for (let i = 0; i < this.config.collectibles; i++) {
-      this.collectibles.push({
-        x: Math.random() * (this.config.width - 30) + 50,
-        y: Math.random() * (this.config.height - 100) + 50,
-        width: 16,
-        height: 16,
-        collected: false
-      });
-    }
-    
-    this.setupControls();
-  }
-
-  setupControls() {
-    const keys = {};
-    window.addEventListener('keydown', (e) => keys[e.key] = true);
-    window.addEventListener('keyup', (e) => keys[e.key] = false);
-    
-    this.keys = keys;
-  }
-
-  update() {
-    if (!this.isRunning) return;
-    
-    // Player movement
-    if (this.keys['ArrowLeft'] || this.keys['a']) this.player.vx = -this.config.playerSpeed;
-    else if (this.keys['ArrowRight'] || this.keys['d']) this.player.vx = this.config.playerSpeed;
-    else this.player.vx *= 0.8;
-    
-    if ((this.keys['ArrowUp'] || this.keys['w'] || this.keys[' ']) && this.player.onGround) {
-      this.player.vy = -this.config.jumpPower;
-      this.player.onGround = false;
-    }
-    
-    // Apply gravity
-    this.player.vy += this.config.gravity;
-    
-    // Update position
-    this.player.x += this.player.vx;
-    this.player.y += this.player.vy;
-    
-    // Ground collision
-    if (this.player.y > this.config.height - this.player.height - 50) {
-      this.player.y = this.config.height - this.player.height - 50;
-      this.player.vy = 0;
-      this.player.onGround = true;
-    }
-    
-    // Boundaries
-    this.player.x = Math.max(0, Math.min(this.config.width - this.player.width, this.player.x));
-    
-    // Update enemies
-    this.enemies.forEach(enemy => {
-      enemy.x += enemy.vx;
-      if (enemy.x <= 0 || enemy.x >= this.config.width - enemy.width) enemy.vx *= -1;
-    });
-    
-    // Check collisions
-    this.checkCollisions();
-  }
-
-  checkCollisions() {
-    // Enemy collisions
-    this.enemies.forEach(enemy => {
-      if (this.checkCollision(this.player, enemy)) {
-        this.gameOver();
-      }
-    });
-    
-    // Collectible collisions
-    this.collectibles.forEach(collectible => {
-      if (!collectible.collected && this.checkCollision(this.player, collectible)) {
-        collectible.collected = true;
-        this.score += 10;
-      }
-    });
-    
-    // Win condition
-    if (this.collectibles.every(c => c.collected)) {
-      this.gameWin();
-    }
-  }
-
-  checkCollision(rect1, rect2) {
-    return rect1.x < rect2.x + rect2.width &&
-           rect1.x + rect1.width > rect2.x &&
-           rect1.y < rect2.y + rect2.height &&
-           rect1.y + rect1.height > rect2.y;
-  }
-
-  render() {
-    this.ctx.fillStyle = this.config.backgroundColor;
-    this.ctx.fillRect(0, 0, this.config.width, this.config.height);
-    
-    // Draw ground
-    this.ctx.fillStyle = '#444';
-    this.ctx.fillRect(0, this.config.height - 50, this.config.width, 50);
-    
-    // Draw player
-    this.ctx.fillStyle = '#00ffff';
-    this.ctx.fillRect(this.player.x, this.player.y, this.player.width, this.player.height);
-    
-    // Draw enemies
-    this.ctx.fillStyle = '#ff0000';
-    this.enemies.forEach(enemy => {
-      this.ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-    });
-    
-    // Draw collectibles
-    this.ctx.fillStyle = '#ffff00';
-    this.collectibles.forEach(collectible => {
-      if (!collectible.collected) {
-        this.ctx.fillRect(collectible.x, collectible.y, collectible.width, collectible.height);
-      }
-    });
-    
-    // Draw UI
-    this.ctx.fillStyle = '#fff';
-    this.ctx.font = '20px Arial';
-    this.ctx.fillText(\`Score: \${this.score}\`, 20, 30);
-    this.ctx.fillText(\`Collectibles: \${this.collectibles.filter(c => !c.collected).length}\`, 20, 60);
-  }
-
-  gameLoop() {
-    this.update();
-    this.render();
-    if (this.isRunning) requestAnimationFrame(() => this.gameLoop());
-  }
-
-  start() {
-    this.isRunning = true;
-    this.gameLoop();
-  }
-
-  stop() {
-    this.isRunning = false;
-  }
-
-  gameOver() {
-    this.stop();
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.fillRect(0, 0, this.config.width, this.config.height);
-    this.ctx.fillStyle = '#ff0000';
-    this.ctx.font = '48px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText('Game Over!', this.config.width / 2, this.config.height / 2);
-    this.ctx.fillStyle = '#fff';
-    this.ctx.font = '24px Arial';
-    this.ctx.fillText(\`Final Score: \${this.score}\`, this.config.width / 2, this.config.height / 2 + 50);
-  }
-
-  gameWin() {
-    this.stop();
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    this.ctx.fillRect(0, 0, this.config.width, this.config.height);
-    this.ctx.fillStyle = '#00ff00';
-    this.ctx.font = '48px Arial';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText('You Win!', this.config.width / 2, this.config.height / 2);
-    this.ctx.fillStyle = '#fff';
-    this.ctx.font = '24px Arial';
-    this.ctx.fillText(\`Score: \${this.score}\`, this.config.width / 2, this.config.height / 2 + 50);
-  }
-
-  getCanvas() {
-    return this.canvas;
-  }
-}
-
-// Export for use
-window.Game = Game;
-`;
-  };
-
-  const generateGame = useCallback(async (prompt: string, options?: GenerationOptions) => {
+  const generateNewGame = async (prompt: string) => {
     setIsGenerating(true);
     setError(null);
     
     try {
-      const gameData = await simulateGameGeneration(prompt, options);
-      setCurrentGame(gameData);
-      toast.success('Game generated successfully!');
+      // Simulate API call with timeout
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Analyze prompt to determine game type
+      const gameType = analyzePrompt(prompt);
+      const theme = extractTheme(prompt);
+      
+      // Get template based on game type
+      const template = gameTemplates[gameType as keyof typeof gameTemplates] || gameTemplates.platformer;
+      
+      // Generate game title from prompt
+      const title = prompt.split(' ').slice(0, 3).join(' ') || `${gameType} Game`;
+      
+      // Create game data
+      const gameData: GameData = {
+        title,
+        type: gameType,
+        files: {},
+        config: {
+          ...template.config,
+          mechanics: template.mechanics,
+          elements: template.elements,
+          theme,
+          difficulty: 3 // Medium difficulty by default
+        }
+      };
+      
+      const metadata: GameMetadata = {
+        id: Math.random().toString(36).substring(2, 9),
+        title: gameData.title || 'Generated Game',
+        prompt,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        plays: 0,
+        files: []
+      };
+      
+      // Save to localStorage
+      const games = JSON.parse(localStorage.getItem('forge-games') || '{}');
+      games[metadata.id] = { data: gameData, metadata };
+      localStorage.setItem('forge-games', JSON.stringify(games));
+      
+      setGeneratedGame({ data: gameData, metadata });
+      return { data: gameData, metadata };
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to generate game';
+      const errorMessage = 'Failed to generate game. Please try again.';
       setError(errorMessage);
-      toast.error(errorMessage);
+      throw new Error(errorMessage);
     } finally {
       setIsGenerating(false);
     }
-  }, []);
-
-  const saveGame = useCallback((game: GameData, metadata: Omit<GameMetadata, 'id' | 'createdAt' | 'updatedAt' | 'plays'>): string => {
-    const id = `game_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // Save game data
-    const savedGames = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    savedGames[id] = game;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedGames));
-    
-    // Save metadata
-    const gameMetadata: GameMetadata = {
-      ...metadata,
-      id,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      plays: 0
-    };
-    
-    const savedMetadata = JSON.parse(localStorage.getItem(METADATA_KEY) || '[]');
-    savedMetadata.push(gameMetadata);
-    localStorage.setItem(METADATA_KEY, JSON.stringify(savedMetadata));
-    
-    toast.success('Game saved successfully!');
-    return id;
-  }, []);
-
-  const loadGame = useCallback((id: string): GameData | null => {
-    const savedGames = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    const game = savedGames[id];
-    
-    if (game) {
-      // Update plays count
-      const savedMetadata = JSON.parse(localStorage.getItem(METADATA_KEY) || '[]');
-      const metadataIndex = savedMetadata.findIndex((m: GameMetadata) => m.id === id);
-      if (metadataIndex !== -1) {
-        savedMetadata[metadataIndex].plays += 1;
-        savedMetadata[metadataIndex].updatedAt = new Date();
-        localStorage.setItem(METADATA_KEY, JSON.stringify(savedMetadata));
-      }
-      
-      setCurrentGame(game);
-      return game;
-    }
-    
-    return null;
-  }, []);
-
-  const getGameHistory = useCallback((): GameMetadata[] => {
-    const savedMetadata = JSON.parse(localStorage.getItem(METADATA_KEY) || '[]');
-    return savedMetadata.sort((a: GameMetadata, b: GameMetadata) => 
-      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    );
-  }, []);
-
-  const deleteGame = useCallback((id: string) => {
-    // Remove game data
-    const savedGames = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    delete savedGames[id];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(savedGames));
-    
-    // Remove metadata
-    const savedMetadata = JSON.parse(localStorage.getItem(METADATA_KEY) || '[]');
-    const filteredMetadata = savedMetadata.filter((m: GameMetadata) => m.id !== id);
-    localStorage.setItem(METADATA_KEY, JSON.stringify(filteredMetadata));
-    
-    toast.success('Game deleted successfully!');
-  }, []);
+  };
 
   return {
+    generateNewGame,
     isGenerating,
     error,
-    currentGame,
-    generateGame,
-    saveGame,
-    loadGame,
-    getGameHistory,
-    deleteGame
+    generatedGame
   };
-};
+}
