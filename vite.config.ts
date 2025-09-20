@@ -6,11 +6,9 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: 'dist',
-    sourcemap: false,
-    chunkSizeWarningLimit: 1000
+    sourcemap: false
   },
   server: {
-    port: 3000,
-    open: true
+    port: 3000
   }
 })
