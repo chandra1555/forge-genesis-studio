@@ -97,7 +97,10 @@ export function useGameGenerator() {
         plays: 0
       };
       
-      localStorage.setItem(`game-${metadata.id}`, JSON.stringify({ data: gameData, metadata }));
+      // Store in localStorage
+      const games = JSON.parse(localStorage.getItem('forge-games') || '{}');
+      games[metadata.id] = { data: gameData, metadata };
+      localStorage.setItem('forge-games', JSON.stringify(games));
       
       setGeneratedGame({ data: gameData, metadata });
       return { data: gameData, metadata };
