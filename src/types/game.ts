@@ -1,8 +1,7 @@
 export interface GameData {
   title?: string;
   type: string;
-  files: Record<string, string>;
-  config: any;
+  config: GameConfig;
 }
 
 export interface GameMetadata {
@@ -10,21 +9,21 @@ export interface GameMetadata {
   title: string;
   prompt: string;
   createdAt: Date;
-  updatedAt: Date;
   plays: number;
-  files: string[];
 }
 
-export interface GameState {
-  score: number;
-  isPlaying: boolean;
-  isGameOver: boolean;
-  level: number;
-  lives: number;
-}
-
-export interface GenerationOptions {
-  gameType: 'platformer' | 'shooter' | 'puzzle' | 'racing' | 'strategy';
-  difficulty: 'easy' | 'medium' | 'hard';
+export interface GameConfig {
   theme: string;
+  objects: GameObject[];
+}
+
+export interface GameObject {
+  type: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  radius?: number;
+  color: string;
+  behavior?: string;
 }
